@@ -9,6 +9,9 @@ import org.hyperledger.fabric.contract.annotation.Property;
  */
 @DataType
 public class BlackList {
+
+
+
     @Property()
     private Long userId;
     @Property()
@@ -27,6 +30,8 @@ public class BlackList {
     @Property()
     private Long operatorAt;
 
+
+
     public BlackList(Long userId, Long joinAt, Integer count, Boolean hit, Boolean deleteFlag, Long operatorId, Long operatorAt) {
         this.userId = userId;
         this.joinAt = joinAt;
@@ -39,7 +44,6 @@ public class BlackList {
 
     public BlackList() {
     }
-
 
 
     public Long getUserId() {

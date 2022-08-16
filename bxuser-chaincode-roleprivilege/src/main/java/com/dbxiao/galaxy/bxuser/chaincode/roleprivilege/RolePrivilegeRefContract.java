@@ -1,5 +1,6 @@
 package com.dbxiao.galaxy.bxuser.chaincode.roleprivilege;
 
+import org.hyperledger.fabric.Logger;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contract;
@@ -17,144 +18,167 @@ import java.util.ArrayList;
  */
 @Default
 @Contract(name = "roleprivilegecc", info = @Info(title = "BXUser RolePrivilegeRefContract",
-        description = "BXUser RolePrivilegeRefContract", version = "1.0.0"))
+        description = "BXUser RolePrivilegeRefContract", version = "1.0"))
 public class RolePrivilegeRefContract implements ContractInterface {
+    private static final Logger LOGGER = Logger.getLogger("RolePrivilegeRefContract");
 
-    private static final String RPR_KEY_FORMAT = "rpr:%s";
+    private static final String RPR_KEY_FORMAT = "rprc_%s";
 
-    private static final String buildKey(Long key){
+    private static final String buildKey(Long key) {
         return String.format(RPR_KEY_FORMAT, key);
     }
 
-    @Transaction()
-    public RolePrivilegeRef createRPR(final Context ctx, final Long key, final RolePrivilegeRef rpr) {
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public RolePrivilegeRef CreateRPR(final Context ctx, final RolePrivilegeRef rpr) {
         ChaincodeStub stub = ctx.getStub();
 
-        String valueState = stub.getStringState(buildKey(key));
-        if (!valueState.isEmpty()) {
-            String errorMessage = String.format("RPR %s already exists", key);
+        String realKey = buildKey(rpr.getRoleId());
+        String valueState = stub.getStringState(realKey);
+        if (!isEmpty(valueState)) {
+            String errorMessage = String.format("RPR %s already exists", realKey);
             throw new ChaincodeException(errorMessage, "key already exists");
         }
 
         valueState = JSON.toJSONString(rpr);
-        stub.putStringState(buildKey(key), valueState);
+        stub.putStringState(realKey, valueState);
 
         return rpr;
     }
 
-    @Transaction()
-    public RolePrivilegeRef updateRPR(final Context ctx, final Long key, RolePrivilegeRef rpr) {
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public RolePrivilegeRef UpdateRPR(final Context ctx, RolePrivilegeRef rpr) {
         ChaincodeStub stub = ctx.getStub();
 
-        String valueState = stub.getStringState(buildKey(key));
+        String realKey = buildKey(rpr.getRoleId());
+        String valueState = stub.getStringState(realKey);
 
-        if (valueState.isEmpty()) {
-            String errorMessage = String.format("RPR %s does not exist", key);
-            System.out.println(errorMessage);
+        if (isEmpty(valueState)) {
+            String errorMessage = String.format("RPR %s does not exist", realKey);
+            LOGGER.error(errorMessage);
             throw new ChaincodeException(errorMessage, "no target RPR key ");
         }
 
         valueState = JSON.toJSONString(rpr);
         RolePrivilegeRef old = JSON.parseObject(valueState, RolePrivilegeRef.class);
         if (old.getDeleteFlag()) {
-            String errorMessage = String.format("RPR %s already deleted", key);
-            System.out.println(errorMessage);
+            String errorMessage = String.format("RPR %s already deleted", realKey);
+            LOGGER.error(errorMessage);
             throw new ChaincodeException(errorMessage, "RPR already deleted ");
         }
 
-        stub.putStringState(buildKey(key), valueState);
+        stub.putStringState(realKey, valueState);
         return rpr;
     }
 
-    @Transaction()
-    public RolePrivilegeRef addPrivilege(final Context ctx, final Long key, Long roleId) {
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public Boolean AddPrivilege(final Context ctx, final Long roleId, final Long privilegeId,
+                           final Long operatorId,final Long time) {
         ChaincodeStub stub = ctx.getStub();
 
-        String valueState = stub.getStringState(buildKey(key));
+        String realKey = buildKey(roleId);
+        String valueState = stub.getStringState(realKey);
 
         if (valueState.isEmpty()) {
-            String errorMessage = String.format("RPR %s does not exist", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "no target RPR key ");
+            RolePrivilegeRef rolePrivilegeRef = new RolePrivilegeRef();
+            rolePrivilegeRef.setRoleId(roleId);
+            ArrayList<Long> priviletes = new ArrayList<Long>();
+            priviletes.add(privilegeId);
+            rolePrivilegeRef.setDeleteFlag(Boolean.FALSE);
+            rolePrivilegeRef.setOperatorId(operatorId);
+            rolePrivilegeRef.setOperatorAt(time);
+            stub.putStringState(realKey, JSON.toJSONString(rolePrivilegeRef));
+            return Boolean.TRUE;
         }
-        RolePrivilegeRef rpr = JSON.parseObject(valueState, RolePrivilegeRef.class);
+        RolePrivilegeRef rpr =  JSON.parseObject(valueState, RolePrivilegeRef.class);
         if (rpr.getDeleteFlag()) {
-            String errorMessage = String.format("RPR %s already deleted", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "RPR already deleted ");
+            String errorMessage = String.format("URF %s already deleted", realKey);
+            LOGGER.error(errorMessage);
+            return Boolean.TRUE;
         }
-        if (rpr.getPrivilegeId() == null) {
+        if (rpr.getPrivilegeIds() == null) {
             rpr.setPrivilegeId(new ArrayList<Long>());
         }
-        rpr.getPrivilegeId().add(roleId);
+        if(!rpr.getPrivilegeIds().contains(roleId)){
+            rpr.getPrivilegeIds().add(roleId);
+        }
+        rpr.setOperatorAt(time);
+        rpr.setOperatorId(operatorId);
         valueState = JSON.toJSONString(rpr);
-        stub.putStringState(buildKey(key), valueState);
-        return rpr;
+        stub.putStringState(realKey, valueState);
+        return Boolean.TRUE;
     }
 
-    @Transaction()
-    public RolePrivilegeRef cancelPrivilege(final Context ctx, final Long key, Long roleId) {
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public Boolean CancelPrivilege(final Context ctx, final Long roleId, final Long privilegeId,
+                                            final Long operatorId, final Long time) {
         ChaincodeStub stub = ctx.getStub();
 
-        String valueState = stub.getStringState(buildKey(key));
+        String realKey = buildKey(roleId);
+        String valueState = stub.getStringState(realKey);
 
-        if (valueState.isEmpty()) {
-            String errorMessage = String.format("RPR %s does not exist", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "no target RPR key ");
+        if (isEmpty(valueState)) {
+            String errorMessage = String.format("RPR %s does not exist", realKey);
+            LOGGER.error(errorMessage);
+            return Boolean.TRUE;
         }
         RolePrivilegeRef rpr = JSON.parseObject(valueState, RolePrivilegeRef.class);
         if (rpr.getDeleteFlag()) {
-            String errorMessage = String.format("RPR %s already deleted", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "RPR already deleted ");
+            String errorMessage = String.format("RPR %s already deleted", realKey);
+            LOGGER.error(errorMessage);
+            return Boolean.TRUE;
         }
-        if (rpr.getPrivilegeId() == null) {
-            return rpr;
+        if (rpr.getPrivilegeIds() == null) {
+            return Boolean.TRUE;
         }
-        rpr.getPrivilegeId().remove(roleId);
+        rpr.getPrivilegeIds().remove(privilegeId);
+        rpr.setOperatorId(operatorId);
+        rpr.setOperatorAt(time);
         valueState = JSON.toJSONString(rpr);
-        stub.putStringState(buildKey(key), valueState);
-        return rpr;
+        stub.putStringState(realKey, valueState);
+        return Boolean.TRUE;
     }
 
-    @Transaction()
-    public RolePrivilegeRef delRPR(final Context ctx, final Long key) {
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public Boolean DelRPR(final Context ctx, final Long roleId,
+                          final Long operatorId, final Long time) {
         ChaincodeStub stub = ctx.getStub();
 
-        String valueState = stub.getStringState(buildKey(key));
+        String realKey = buildKey(roleId);
+        String valueState = stub.getStringState(realKey);
 
-        if (valueState.isEmpty()) {
-            String errorMessage = String.format("RPR %s does not exist", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "no target RPR key ");
+        if (isEmpty(valueState)) {
+            return Boolean.TRUE;
         }
         RolePrivilegeRef rpr = JSON.parseObject(valueState, RolePrivilegeRef.class);
-        if (rpr.getPrivilegeId() == null) {
-            return rpr;
-        }
         rpr.setDeleteFlag(Boolean.TRUE);
+        rpr.setOperatorAt(time);
+        rpr.setOperatorId(operatorId);
         valueState = JSON.toJSONString(rpr);
-        stub.putStringState(buildKey(key), valueState);
-        return rpr;
+        stub.putStringState(realKey, valueState);
+        return Boolean.TRUE;
     }
 
-    @Transaction()
-    public RolePrivilegeRef queryRPR(final Context ctx, Long key) {
+    @Transaction(intent = Transaction.TYPE.EVALUATE)
+    public RolePrivilegeRef QueryRPR(final Context ctx, final Long roleId) {
         ChaincodeStub stub = ctx.getStub();
-        String valueState = stub.getStringState(buildKey(key));
+        String realKey = buildKey(roleId);
+        String valueState = stub.getStringState(realKey);
 
-        if (valueState.isEmpty()) {
-            String errorMessage = String.format("RPR %s does not exist", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "no target RPR key ");
+        if (isEmpty(valueState)) {
+            String errorMessage = String.format("RPR %s does not exist", realKey);
+            LOGGER.error(errorMessage);
+            return new RolePrivilegeRef();
         }
         RolePrivilegeRef rpr = JSON.parseObject(valueState, RolePrivilegeRef.class);
         if (rpr.getDeleteFlag()) {
-            String errorMessage = String.format("RPR %s already deleted", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "RPR already deleted ");
+            String errorMessage = String.format("RPR %s already deleted", realKey);
+            LOGGER.error(errorMessage);
+            return new RolePrivilegeRef();
         }
         return rpr;
+    }
+
+    private Boolean isEmpty(String data) {
+        return data == null || data.length() <= 0;
     }
 }

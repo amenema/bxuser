@@ -1,5 +1,7 @@
 package com.dbxiao.galaxy.bxuser.chaincode.userrole;
 
+import com.google.common.collect.Lists;
+import org.hyperledger.fabric.Logger;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contract;
@@ -17,145 +19,169 @@ import java.util.ArrayList;
  */
 @Default
 @Contract(name = "userrolecc", info = @Info(title = "BXUser UserRoleRefContract",
-        description = "BXUser UserRoleRefContract", version = "1.0.0"))
+        description = "BXUser UserRoleRefContract", version = "1.0"))
 public class UserRoleRefContract implements ContractInterface {
-    private static final String URF_KEY_FORMAT = "urf:%s";
-    
-    private static final String buildKey(Long key){
+
+    private static final Logger LOGGER = Logger.getLogger("UserRoleRefContract");
+
+    private static final String URF_KEY_FORMAT = "urf_%s";
+
+    private static final String buildKey(Long key) {
         return String.format(URF_KEY_FORMAT, key);
     }
 
 
-    @Transaction()
-    public UserRoleRef createURF(final Context ctx, final Long key, final UserRoleRef urf) {
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public UserRoleRef CreateURF(final Context ctx,final UserRoleRef urf) {
         ChaincodeStub stub = ctx.getStub();
 
-        String valueState = stub.getStringState(buildKey(key));
-        if (!valueState.isEmpty()) {
-            String errorMessage = String.format("urf %s already exists", key);
+        String realKey = buildKey(urf.getUserId());
+        String valueState = stub.getStringState(realKey);
+        if (!isEmpty(valueState)) {
+            String errorMessage = String.format("urf %s already exists", realKey);
             throw new ChaincodeException(errorMessage, "key already exists");
         }
 
         valueState = JSON.toJSONString(urf);
-        stub.putStringState(buildKey(key), valueState);
+        stub.putStringState(realKey, valueState);
 
         return urf;
     }
 
-    @Transaction()
-    public UserRoleRef updateURF(final Context ctx, final Long key, UserRoleRef urf) {
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public UserRoleRef UpdateURF(final Context ctx,  final UserRoleRef urf) {
         ChaincodeStub stub = ctx.getStub();
 
-        String valueState = stub.getStringState(buildKey(key));
+        String realKey = buildKey(urf.getUserId());
+        String valueState = stub.getStringState(realKey);
 
-        if (valueState.isEmpty()) {
-            String errorMessage = String.format("URF %s does not exist", key);
-            System.out.println(errorMessage);
+        if (isEmpty(valueState)) {
+            String errorMessage = String.format("URF %s does not exist", realKey);
+            LOGGER.error(errorMessage);
             throw new ChaincodeException(errorMessage, "no target urf key ");
         }
 
         valueState = JSON.toJSONString(urf);
         UserRoleRef old = JSON.parseObject(valueState, UserRoleRef.class);
         if (old.getDeleteFlag()) {
-            String errorMessage = String.format("URF %s already deleted", key);
-            System.out.println(errorMessage);
+            String errorMessage = String.format("URF %s already deleted", realKey);
+            LOGGER.error(errorMessage);
             throw new ChaincodeException(errorMessage, "URF already deleted ");
         }
 
-        stub.putStringState(buildKey(key), valueState);
+        stub.putStringState(realKey, valueState);
         return urf;
     }
 
-    @Transaction()
-    public UserRoleRef addRole(final Context ctx, final Long key, Long roleId) {
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public Boolean AddRole(final Context ctx, final Long userId, final Long roleId,
+                               final Long operatorId,final Long time) {
         ChaincodeStub stub = ctx.getStub();
 
-        String valueState = stub.getStringState(buildKey(key));
+        String realKey = buildKey(userId);
+        String valueState = stub.getStringState(realKey);
 
         if (valueState.isEmpty()) {
-            String errorMessage = String.format("URF %s does not exist", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "no target urf key ");
+            UserRoleRef userRoleRef = new UserRoleRef();
+            userRoleRef.setUserId(userId);
+            userRoleRef.setRefRoleIds(Lists.newArrayList(roleId));
+            userRoleRef.setDeleteFlag(Boolean.FALSE);
+            userRoleRef.setOperatorId(operatorId);
+            userRoleRef.setOperatorAt(time);
+            stub.putStringState(realKey, JSON.toJSONString(userRoleRef));
+            return Boolean.TRUE;
         }
         UserRoleRef urf = JSON.parseObject(valueState, UserRoleRef.class);
         if (urf.getDeleteFlag()) {
-            String errorMessage = String.format("URF %s already deleted", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "URF already deleted ");
+            String errorMessage = String.format("URF %s already deleted", realKey);
+            LOGGER.error(errorMessage);
+            return Boolean.TRUE;
         }
         if (urf.getRefRoleIds() == null) {
             urf.setRefRoleIds(new ArrayList<Long>());
         }
-        urf.getRefRoleIds().add(roleId);
+        if(!urf.getRefRoleIds().contains(roleId)){
+            urf.getRefRoleIds().add(roleId);
+        }
+        urf.setOperatorAt(time);
+        urf.setOperatorId(operatorId);
         valueState = JSON.toJSONString(urf);
-        stub.putStringState(buildKey(key), valueState);
-        return urf;
+        stub.putStringState(realKey, valueState);
+        return Boolean.TRUE;
     }
 
-    @Transaction()
-    public UserRoleRef cancelRole(final Context ctx, final Long key, Long roleId) {
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public Boolean CancelRole(final Context ctx, final Long userId, final Long roleId,
+                                  final Long operatorId, final Long time) {
         ChaincodeStub stub = ctx.getStub();
 
-        String valueState = stub.getStringState(buildKey(key));
+        String realKey = buildKey(userId);
+        String valueState = stub.getStringState(realKey);
 
-        if (valueState.isEmpty()) {
-            String errorMessage = String.format("URF %s does not exist", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "no target urf key ");
+        if (isEmpty(valueState)) {
+            String errorMessage = String.format("URF %s does not exist", realKey);
+            LOGGER.error(errorMessage);
+            return Boolean.TRUE;
         }
         UserRoleRef urf = JSON.parseObject(valueState, UserRoleRef.class);
         if (urf.getDeleteFlag()) {
-            String errorMessage = String.format("URF %s already deleted", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "URF already deleted ");
+            String errorMessage = String.format("URF %s already deleted", realKey);
+            LOGGER.error(errorMessage);
+            return Boolean.TRUE;
         }
         if (urf.getRefRoleIds() == null) {
-            return urf;
+            return Boolean.TRUE;
         }
         urf.getRefRoleIds().remove(roleId);
+        urf.setOperatorAt(time);
+        urf.setOperatorId(operatorId);
         valueState = JSON.toJSONString(urf);
-        stub.putStringState(buildKey(key), valueState);
-        return urf;
+        stub.putStringState(realKey, valueState);
+        return Boolean.TRUE;
     }
 
-    @Transaction()
-    public UserRoleRef delURF(final Context ctx, final Long key) {
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public Boolean DelURF(final Context ctx, final Long userId,
+                          final Long operatorId, final Long time) {
         ChaincodeStub stub = ctx.getStub();
 
-        String valueState = stub.getStringState(buildKey(key));
+        String realKey = buildKey(userId);
+        String valueState = stub.getStringState(realKey);
 
-        if (valueState.isEmpty()) {
-            String errorMessage = String.format("URF %s does not exist", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "no target urf key ");
+        if (isEmpty(valueState)) {
+            return Boolean.TRUE;
         }
         UserRoleRef urf = JSON.parseObject(valueState, UserRoleRef.class);
-        if (urf.getRefRoleIds() == null) {
-            return urf;
-        }
         urf.setDeleteFlag(Boolean.TRUE);
+        urf.setOperatorAt(time);
+        urf.setOperatorId(operatorId);
         valueState = JSON.toJSONString(urf);
-        stub.putStringState(buildKey(key), valueState);
-        return urf;
+        stub.putStringState(realKey, valueState);
+        return Boolean.TRUE;
     }
 
-    @Transaction()
-    public UserRoleRef queryURF(final Context ctx, Long key) {
+    @Transaction(intent = Transaction.TYPE.EVALUATE)
+    public UserRoleRef QueryURF(final Context ctx, final Long userId) {
         ChaincodeStub stub = ctx.getStub();
-        String valueState = stub.getStringState(buildKey(key));
+        String realKey = buildKey(userId);
+        String valueState = stub.getStringState(realKey);
 
-        if (valueState.isEmpty()) {
-            String errorMessage = String.format("URF %s does not exist", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "no target urf key ");
+        if (isEmpty(valueState)) {
+            String errorMessage = String.format("URF %s does not exist", realKey);
+            LOGGER.error(errorMessage);
+            return new UserRoleRef();
         }
         UserRoleRef urf = JSON.parseObject(valueState, UserRoleRef.class);
 
         if (urf.getDeleteFlag()) {
-            String errorMessage = String.format("URF %s already deleted", key);
-            System.out.println(errorMessage);
-            throw new ChaincodeException(errorMessage, "URF already deleted ");
+            String errorMessage = String.format("URF %s already deleted", realKey);
+            LOGGER.error(errorMessage);
+            return new UserRoleRef();
         }
         return urf;
+    }
+
+    private Boolean isEmpty(String data) {
+        return data == null || data.length() <= 0;
     }
 }
