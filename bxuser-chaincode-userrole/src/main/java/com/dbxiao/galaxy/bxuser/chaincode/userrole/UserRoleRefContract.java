@@ -32,7 +32,7 @@ public class UserRoleRefContract implements ContractInterface {
 
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public UserRoleRef CreateURF(final Context ctx,final UserRoleRef urf) {
+    public UserRoleRef createURF(final Context ctx,final UserRoleRef urf) {
         ChaincodeStub stub = ctx.getStub();
 
         String realKey = buildKey(urf.getUserId());
@@ -49,7 +49,7 @@ public class UserRoleRefContract implements ContractInterface {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public UserRoleRef UpdateURF(final Context ctx,  final UserRoleRef urf) {
+    public UserRoleRef updateURF(final Context ctx,  final UserRoleRef urf) {
         ChaincodeStub stub = ctx.getStub();
 
         String realKey = buildKey(urf.getUserId());
@@ -73,8 +73,8 @@ public class UserRoleRefContract implements ContractInterface {
         return urf;
     }
 
-    @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public Boolean AddRole(final Context ctx, final Long userId, final Long roleId,
+    @Transaction()
+    public Boolean addRole(final Context ctx, final Long userId, final Long roleId,
                                final Long operatorId,final Long time) {
         ChaincodeStub stub = ctx.getStub();
 
@@ -111,7 +111,7 @@ public class UserRoleRefContract implements ContractInterface {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public Boolean CancelRole(final Context ctx, final Long userId, final Long roleId,
+    public Boolean cancelRole(final Context ctx, final Long userId, final Long roleId,
                                   final Long operatorId, final Long time) {
         ChaincodeStub stub = ctx.getStub();
 
@@ -141,7 +141,7 @@ public class UserRoleRefContract implements ContractInterface {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public Boolean DelURF(final Context ctx, final Long userId,
+    public Boolean delURF(final Context ctx, final Long userId,
                           final Long operatorId, final Long time) {
         ChaincodeStub stub = ctx.getStub();
 
@@ -161,7 +161,7 @@ public class UserRoleRefContract implements ContractInterface {
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public UserRoleRef QueryURF(final Context ctx, final Long userId) {
+    public UserRoleRef queryURF(final Context ctx, final Long userId) {
         ChaincodeStub stub = ctx.getStub();
         String realKey = buildKey(userId);
         String valueState = stub.getStringState(realKey);

@@ -11,13 +11,10 @@ import org.hyperledger.fabric.contract.annotation.Property;
 public class BlackList {
 
 
-
     @Property()
     private Long userId;
     @Property()
-    private Long joinAt;
-    @Property()
-    private Integer count;
+    private WindowData[] windows;
 
 
     @Property()
@@ -31,11 +28,9 @@ public class BlackList {
     private Long operatorAt;
 
 
-
-    public BlackList(Long userId, Long joinAt, Integer count, Boolean hit, Boolean deleteFlag, Long operatorId, Long operatorAt) {
+    public BlackList(Long userId, WindowData[] windows, Boolean hit, Boolean deleteFlag, Long operatorId, Long operatorAt) {
         this.userId = userId;
-        this.joinAt = joinAt;
-        this.count = count;
+        this.windows = windows;
         this.hit = hit;
         this.deleteFlag = deleteFlag;
         this.operatorId = operatorId;
@@ -62,20 +57,12 @@ public class BlackList {
         this.userId = userId;
     }
 
-    public Long getJoinAt() {
-        return joinAt;
+    public WindowData[] getWindows() {
+        return windows;
     }
 
-    public void setJoinAt(Long joinAt) {
-        this.joinAt = joinAt;
-    }
-
-    public Integer getCount() {
-        return count;
-    }
-
-    public void setCount(Integer count) {
-        this.count = count;
+    public void setWindows(WindowData[] windows) {
+        this.windows = windows;
     }
 
     public Boolean getDeleteFlag() {

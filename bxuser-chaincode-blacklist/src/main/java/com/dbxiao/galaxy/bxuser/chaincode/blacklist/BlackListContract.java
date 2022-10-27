@@ -9,6 +9,9 @@ import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.Transaction;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * @author amen
  * @date 2022/7/22
@@ -20,69 +23,137 @@ public class BlackListContract implements ContractInterface {
     private static final String BLACK_LIST_KEY_FORMAT = "blacklist_%s";
 
     private static final Long WINDOWS_TIME_LENGTH = 5 * 60 * 1000L;
-    private static final Integer LIMIT = 100;
+    private static final Integer LIMIT = 10;
+    static Map<String, String> MAP = new HashMap<String, String>();
 
     private static final Logger LOGGER = Logger.getLogger("BlackListContract");
+
     private static final String buildKey(Long key) {
         return String.format(BLACK_LIST_KEY_FORMAT, key);
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public BlackList Query(final Context ctx, final  Long userId){
+    public BlackList query(final Context ctx, final Long userId) {
         ChaincodeStub stub = ctx.getStub();
 
         String realKey = buildKey(userId);
         String valueState = stub.getStringState(realKey);
-        if(valueState == null || valueState.length() <=0){
+        if (valueState == null || valueState.length() <= 0) {
             return new BlackList();
         }
         return JSON.parseObject(valueState, BlackList.class);
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public BlackList CheckData(final Context ctx, final Long userId, Long time) {
+    public Boolean checkData(final Context ctx, final Long userId, Long time) {
         ChaincodeStub stub = ctx.getStub();
 
         String realKey = buildKey(userId);
         String valueState = stub.getStringState(realKey);
-        if (valueState == null || valueState.length() <=0 ) {
+        if (valueState == null || valueState.length() <= 0) {
             BlackList data = init(userId, time);
             String json = JSON.toJSONString(data);
             try {
                 stub.putStringState(realKey, json);
-            }catch (Exception e){
+            } catch (Exception e) {
                 LOGGER.error(e.getMessage());
             }
-            LOGGER.info(String.format("init data:%s,json:%s", realKey,json));
-            return data;
+            LOGGER.info(String.format("init data:%s,json:%s", realKey, json));
+            return false;
         }
         BlackList blackList = JSON.parseObject(valueState, BlackList.class);
-        incr(blackList, time);
+        boolean go = SlideWindow.isGo(blackList, LIMIT, WINDOWS_TIME_LENGTH, time);
+        blackList.setHit(!go);
         valueState = JSON.toJSONString(blackList);
         stub.putStringState(realKey, valueState);
+        return blackList.getHit();
+    }
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public Boolean checkDataWithLimit(final Context ctx, final Long userId, Long time, Integer limit) {
+        ChaincodeStub stub = ctx.getStub();
+
+        String realKey = buildKey(userId);
+        String valueState = stub.getStringState(realKey);
+        if (valueState == null || valueState.length() <= 0) {
+            BlackList data = init(userId, time);
+            String json = JSON.toJSONString(data);
+            try {
+                stub.putStringState(realKey, json);
+            } catch (Exception e) {
+                LOGGER.error(e.getMessage());
+            }
+            LOGGER.info(String.format("init data:%s,json:%s", realKey, json));
+            return false;
+        }
+        BlackList blackList = JSON.parseObject(valueState, BlackList.class);
+        boolean go = SlideWindow.isGo(blackList, limit, WINDOWS_TIME_LENGTH, time);
+        blackList.setHit(!go);
+        valueState = JSON.toJSONString(blackList);
+        stub.putStringState(realKey, valueState);
+        LOGGER.info(String.format("insert data:%s,json:%s", realKey, valueState));
+        return blackList.getHit();
+    }
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public BlackList unlock(final Context ctx, final Long userId, Long operatorId, Long time) {
+        ChaincodeStub stub = ctx.getStub();
+
+        String realKey = buildKey(userId);
+        String valueState = stub.getStringState(realKey);
+        if (valueState == null || valueState.length() <= 0) {
+            return null;
+        }
+        BlackList blackList = JSON.parseObject(valueState, BlackList.class);
+        if (blackList.getHit()) {
+            blackList.setHit(Boolean.FALSE);
+            blackList.setWindows(null);
+            blackList.setOperatorId(operatorId);
+            blackList.setOperatorAt(time);
+            valueState = JSON.toJSONString(blackList);
+            stub.putStringState(realKey, valueState);
+        }
         return blackList;
     }
 
-    private void incr(BlackList bl, Long time){
-        long diff = time - bl.getJoinAt();
-        if(diff >= WINDOWS_TIME_LENGTH){
-            bl.setJoinAt(time);
-            bl.setCount(1);
-            bl.setHit(Boolean.FALSE);
-            return;
+    public Boolean checkDataWithLimitTest( final Long userId, Long time, Integer limit) {
+
+
+        String realKey = buildKey(userId);
+        String valueState = MAP.get(realKey);
+        if (valueState == null || valueState.length() <= 0) {
+            BlackList data = init(userId, time);
+            String json = JSON.toJSONString(data);
+            try {
+                MAP.put(realKey, json);
+            } catch (Exception e) {
+                LOGGER.error(e.getMessage());
+            }
+            LOGGER.info(String.format("init data:%s,json:%s", realKey, json));
+            return false;
         }
-        bl.setCount(bl.getCount() + 1);
-        bl.setHit(bl.getCount() >= LIMIT);
+        BlackList blackList = JSON.parseObject(valueState, BlackList.class);
+        boolean go = SlideWindow.isGo(blackList, limit, WINDOWS_TIME_LENGTH, time);
+        blackList.setHit(!go);
+        valueState = JSON.toJSONString(blackList);
+        MAP.put(realKey, valueState);
+        LOGGER.info(String.format("insert data:%s,json:%s", realKey, valueState));
+        return !blackList.getHit();
     }
+
+
+
     private BlackList init(Long userId, Long time) {
-        BlackList blackList = new BlackList();
-        blackList.setCount(1);
-        blackList.setDeleteFlag(Boolean.FALSE);
-        blackList.setUserId(userId);
-        blackList.setJoinAt(time);
-        blackList.setOperatorAt(time);
-        blackList.setOperatorId(userId);
-        blackList.setHit(Boolean.FALSE);
-        return blackList;
+        BlackList bl = new BlackList();
+        bl.setHit(false);
+        bl.setUserId(userId);
+        WindowData[] init = SlideWindow.init(WINDOWS_TIME_LENGTH, time);
+        SlideWindow.addData(init, WINDOWS_TIME_LENGTH, time);
+        bl.setWindows(init);
+        bl.setDeleteFlag(false);
+        bl.setOperatorId(userId);
+        bl.setOperatorAt(time);
+
+        return bl;
     }
 }
