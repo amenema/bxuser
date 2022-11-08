@@ -1,14 +1,22 @@
 package com.dbxiao.galaxy.bxuser.chaincode.contract;
 
 import com.dbxiao.galaxy.bxuser.chaincode.model.BlackList;
+import com.dbxiao.galaxy.bxuser.chaincode.model.ResponseData;
+import com.dbxiao.galaxy.bxuser.chaincode.model.SlideWindow;
+import com.dbxiao.galaxy.bxuser.chaincode.model.WindowData;
 import com.dbxiao.galaxy.bxuser.chaincode.utils.JSON;
+import org.hyperledger.fabric.Logger;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contract;
 import org.hyperledger.fabric.contract.annotation.Default;
 import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.Transaction;
+import org.hyperledger.fabric.shim.Chaincode;
 import org.hyperledger.fabric.shim.ChaincodeStub;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author amen
@@ -16,56 +24,156 @@ import org.hyperledger.fabric.shim.ChaincodeStub;
  */
 @Default
 @Contract(name = "blacklistcc", info = @Info(title = "BXUser BlackListContract",
-        description = "BXUser BlackListContract", version = "1.0.0"))
+        description = "BXUser BlackListContract", version = "1.0"))
 public class BlackListContract implements ContractInterface {
-    private static final String BLACK_LIST_KEY_FORMAT = "blacklist:%s";
+    private static final String BLACK_LIST_KEY_FORMAT = "blacklist_%s";
 
-    private static final Long WINDOWS_TIME_LENGTH = 5 * 60 * 10000L;
-    private static final Integer LIMIT = 100;
+    private static final Long WINDOWS_TIME_LENGTH = 5 * 60 * 1000L;
+    private static final Integer LIMIT = 10;
+    static Map<String, String> MAP = new HashMap<String, String>();
 
-    private static final String buildKey(String key) {
+    private static final Logger LOGGER = Logger.getLogger("BlackListContract");
+
+    private static final String buildKey(Long key) {
         return String.format(BLACK_LIST_KEY_FORMAT, key);
     }
 
-    @Transaction()
-    public BlackList check(final Context ctx, final String userId) {
+    @Transaction(intent = Transaction.TYPE.EVALUATE)
+    public BlackList query(final Context ctx, final Long userId) {
         ChaincodeStub stub = ctx.getStub();
 
         String realKey = buildKey(userId);
         String valueState = stub.getStringState(realKey);
-        BlackList blackList = null;
-        if (valueState.isEmpty()) {
-            return init(userId);
+        if (valueState == null || valueState.length() <= 0) {
+            return new BlackList();
         }
+        return JSON.parseObject(valueState, BlackList.class);
+    }
 
-        blackList = JSON.parseObject(valueState, BlackList.class);
-        incr(blackList);
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public ResponseData<Boolean> checkData(final Context ctx, final Long userId, Long time) {
+        ChaincodeStub stub = ctx.getStub();
+        String logData = submitLog(stub, "checkData",
+                userId.toString(),
+                userId, time);
+        String realKey = buildKey(userId);
+        String valueState = stub.getStringState(realKey);
+        if (valueState == null || valueState.length() <= 0) {
+            BlackList data = init(userId, time);
+            String json = JSON.toJSONString(data);
+            try {
+                stub.putStringState(realKey, json);
+            } catch (Exception e) {
+                LOGGER.error(e.getMessage());
+            }
+            LOGGER.info(String.format("init data:%s,json:%s", realKey, json));
+            return ResponseData.success(Boolean.FALSE, logData);
+        }
+        BlackList blackList = JSON.parseObject(valueState, BlackList.class);
+        boolean go = SlideWindow.isGo(blackList, LIMIT, WINDOWS_TIME_LENGTH, time);
+        blackList.setHit(!go);
         valueState = JSON.toJSONString(blackList);
         stub.putStringState(realKey, valueState);
-        return blackList;
+        return ResponseData.success(blackList.getHit(), logData);
+
     }
 
-    private void incr(BlackList bl){
-        long now = System.currentTimeMillis();
-        long diff = now - bl.getJoinAt();
-        if(diff >= WINDOWS_TIME_LENGTH){
-            bl.setJoinAt(now);
-            bl.setCount(1);
-            bl.setHit(Boolean.FALSE);
-            return;
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public ResponseData<Boolean> checkDataWithLimit(final Context ctx, final Long userId, Long time, Integer limit) {
+        ChaincodeStub stub = ctx.getStub();
+        String logData = submitLog(stub, "checkDataWithLimit",
+                String.format("%s,limit:%s",userId.toString(),limit),
+                userId, time);
+        String realKey = buildKey(userId);
+        String valueState = stub.getStringState(realKey);
+        if (valueState == null || valueState.length() <= 0) {
+            BlackList data = init(userId, time);
+            String json = JSON.toJSONString(data);
+            try {
+                stub.putStringState(realKey, json);
+            } catch (Exception e) {
+                LOGGER.error(e.getMessage());
+            }
+            LOGGER.info(String.format("init data:%s,json:%s", realKey, json));
+            return ResponseData.success(Boolean.FALSE, logData);
         }
-        bl.setCount(bl.getCount() + 1);
-        bl.setHit(bl.getCount() >= LIMIT);
+        BlackList blackList = JSON.parseObject(valueState, BlackList.class);
+        boolean go = SlideWindow.isGo(blackList, limit, WINDOWS_TIME_LENGTH, time);
+        blackList.setHit(!go);
+        valueState = JSON.toJSONString(blackList);
+        stub.putStringState(realKey, valueState);
+        LOGGER.info(String.format("insert data:%s,json:%s", realKey, valueState));
+        return ResponseData.success(blackList.getHit(), logData);
     }
-    private BlackList init(String userId) {
-        BlackList blackList = new BlackList();
-        blackList.setCount(1);
-        blackList.setDeleteFlag(Boolean.FALSE);
-        blackList.setUserId(Long.valueOf(userId));
-        blackList.setJoinAt(System.currentTimeMillis());
-        blackList.setOperatorAt(System.currentTimeMillis());
-        blackList.setOperatorId(Long.valueOf(userId));
-        blackList.setHit(Boolean.FALSE);
-        return blackList;
+
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public ResponseData<Boolean> unlock(final Context ctx, final Long userId, Long operatorId, Long time) {
+        ChaincodeStub stub = ctx.getStub();
+        String logData = submitLog(stub, "unlock",
+                userId.toString(),
+                operatorId, time);
+        String realKey = buildKey(userId);
+        String valueState = stub.getStringState(realKey);
+        if (valueState == null || valueState.length() <= 0) {
+            return ResponseData.success(Boolean.TRUE,logData);
+        }
+        BlackList blackList = JSON.parseObject(valueState, BlackList.class);
+        if (blackList.getHit()) {
+            blackList.setHit(Boolean.FALSE);
+            blackList.setWindows(null);
+            blackList.setOperatorId(operatorId);
+            blackList.setOperatorAt(time);
+            valueState = JSON.toJSONString(blackList);
+            stub.putStringState(realKey, valueState);
+        }
+        return ResponseData.success(Boolean.TRUE,logData);
+    }
+
+    public Boolean checkDataWithLimitTest( final Long userId, Long time, Integer limit) {
+        String realKey = buildKey(userId);
+        String valueState = MAP.get(realKey);
+        if (valueState == null || valueState.length() <= 0) {
+            BlackList data = init(userId, time);
+            String json = JSON.toJSONString(data);
+            try {
+                MAP.put(realKey, json);
+            } catch (Exception e) {
+                LOGGER.error(e.getMessage());
+            }
+            LOGGER.info(String.format("init data:%s,json:%s", realKey, json));
+            return false;
+        }
+        BlackList blackList = JSON.parseObject(valueState, BlackList.class);
+        boolean go = SlideWindow.isGo(blackList, limit, WINDOWS_TIME_LENGTH, time);
+        blackList.setHit(!go);
+        valueState = JSON.toJSONString(blackList);
+        MAP.put(realKey, valueState);
+        LOGGER.info(String.format("insert data:%s,json:%s", realKey, valueState));
+        return !blackList.getHit();
+    }
+
+
+
+    private BlackList init(Long userId, Long time) {
+        BlackList bl = new BlackList();
+        bl.setHit(false);
+        bl.setUserId(userId);
+        WindowData[] init = SlideWindow.init(WINDOWS_TIME_LENGTH, time);
+        SlideWindow.addData(init, WINDOWS_TIME_LENGTH, time);
+        bl.setWindows(init);
+        bl.setDeleteFlag(false);
+        bl.setOperatorId(userId);
+        bl.setOperatorAt(time);
+
+        return bl;
+    }
+
+
+    public String submitLog(ChaincodeStub stub, final String methodName,
+                            final String body,
+                            final Long operatorId, final Long operatorAt) {
+        Chaincode.Response logstash = stub.invokeChaincodeWithStringArgs("logstashcc", "submitLog", "BlackListContract",
+                methodName, body, operatorId.toString(), operatorAt.toString());
+        return logstash.getStringPayload();
     }
 }

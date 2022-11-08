@@ -1,24 +1,21 @@
-package com.dbxiao.galaxy.bxuser.chaincode.model;
+package com.dbxiao.galaxy.bxuser.chaincode.gateway.client.model;
 
 import org.hyperledger.fabric.contract.annotation.DataType;
 import org.hyperledger.fabric.contract.annotation.Property;
+
+import java.util.List;
 
 /**
  * @author amen
  * @date 2022/7/29
  */
 @DataType
-public class BlackList {
-
-
-    @Property()
-    private Long userId;
-    @Property()
-    private WindowData[] windows;
-
+public class RolePrivilegeRef {
 
     @Property()
-    private Boolean hit;
+    private Long roleId;
+    @Property()
+    private List<Long> privilegeIds;
 
     @Property()
     private Boolean deleteFlag;
@@ -28,41 +25,31 @@ public class BlackList {
     private Long operatorAt;
 
 
-    public BlackList(Long userId, WindowData[] windows, Boolean hit, Boolean deleteFlag, Long operatorId, Long operatorAt) {
-        this.userId = userId;
-        this.windows = windows;
-        this.hit = hit;
+    public RolePrivilegeRef(Long roleId, List<Long> privilegeIds, Boolean deleteFlag, Long operatorId, Long operatorAt) {
+        this.roleId = roleId;
+        this.privilegeIds = privilegeIds;
         this.deleteFlag = deleteFlag;
         this.operatorId = operatorId;
         this.operatorAt = operatorAt;
     }
 
-    public BlackList() {
+    public RolePrivilegeRef() {
     }
 
-
-    public Long getUserId() {
-        return userId;
+    public Long getRoleId() {
+        return roleId;
     }
 
-    public Boolean getHit() {
-        return hit;
+    public void setRoleId(Long roleId) {
+        this.roleId = roleId;
     }
 
-    public void setHit(Boolean hit) {
-        this.hit = hit;
+    public List<Long> getPrivilegeIds() {
+        return privilegeIds;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public WindowData[] getWindows() {
-        return windows;
-    }
-
-    public void setWindows(WindowData[] windows) {
-        this.windows = windows;
+    public void setPrivilegeId(List<Long> privilegeIds) {
+        this.privilegeIds = privilegeIds;
     }
 
     public Boolean getDeleteFlag() {
@@ -87,5 +74,14 @@ public class BlackList {
 
     public void setOperatorAt(Long operatorAt) {
         this.operatorAt = operatorAt;
+    }
+    @Override
+    public int hashCode() {
+        return this.roleId.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "@" + Integer.toHexString(hashCode()) + "roleId:" +this.roleId;
     }
 }

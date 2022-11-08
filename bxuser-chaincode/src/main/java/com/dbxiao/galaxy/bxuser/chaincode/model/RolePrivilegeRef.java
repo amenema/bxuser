@@ -15,7 +15,7 @@ public class RolePrivilegeRef {
     @Property()
     private Long roleId;
     @Property()
-    private List<Long> privilegeId;
+    private List<Long> privilegeIds;
 
     @Property()
     private Boolean deleteFlag;
@@ -25,9 +25,9 @@ public class RolePrivilegeRef {
     private Long operatorAt;
 
 
-    public RolePrivilegeRef(Long roleId, List<Long> privilegeId, Boolean deleteFlag, Long operatorId, Long operatorAt) {
+    public RolePrivilegeRef(Long roleId, List<Long> privilegeIds, Boolean deleteFlag, Long operatorId, Long operatorAt) {
         this.roleId = roleId;
-        this.privilegeId = privilegeId;
+        this.privilegeIds = privilegeIds;
         this.deleteFlag = deleteFlag;
         this.operatorId = operatorId;
         this.operatorAt = operatorAt;
@@ -44,12 +44,12 @@ public class RolePrivilegeRef {
         this.roleId = roleId;
     }
 
-    public List<Long> getPrivilegeId() {
-        return privilegeId;
+    public List<Long> getPrivilegeIds() {
+        return privilegeIds;
     }
 
-    public void setPrivilegeId(List<Long> privilegeId) {
-        privilegeId = privilegeId;
+    public void setPrivilegeId(List<Long> privilegeIds) {
+        this.privilegeIds = privilegeIds;
     }
 
     public Boolean getDeleteFlag() {
@@ -82,6 +82,6 @@ public class RolePrivilegeRef {
 
     @Override
     public String toString() {
-        return this.getClass().getSimpleName() + "@" + Integer.toHexString(hashCode()) + "useId:" +this.roleId;
+        return this.getClass().getSimpleName() + "@" + Integer.toHexString(hashCode()) + "roleId:" +this.roleId;
     }
 }

@@ -1,25 +1,21 @@
-package com.dbxiao.galaxy.bxuser.chaincode.model;
+package com.dbxiao.galaxy.bxuser.chaincode.gateway.client.model;
 
 import org.hyperledger.fabric.contract.annotation.DataType;
 import org.hyperledger.fabric.contract.annotation.Property;
+
+import java.util.List;
 
 /**
  * @author amen
  * @date 2022/7/29
  */
 @DataType
-public class BlackList {
-
+public class UserRoleRef {
 
     @Property()
     private Long userId;
     @Property()
-    private WindowData[] windows;
-
-
-    @Property()
-    private Boolean hit;
-
+    private List<Long> refRoleIds;
     @Property()
     private Boolean deleteFlag;
     @Property()
@@ -28,41 +24,31 @@ public class BlackList {
     private Long operatorAt;
 
 
-    public BlackList(Long userId, WindowData[] windows, Boolean hit, Boolean deleteFlag, Long operatorId, Long operatorAt) {
+    public UserRoleRef(Long userId, List<Long> refRoleIds, Boolean deleteFlag, Long operatorId, Long operatorAt) {
         this.userId = userId;
-        this.windows = windows;
-        this.hit = hit;
+        this.refRoleIds = refRoleIds;
         this.deleteFlag = deleteFlag;
         this.operatorId = operatorId;
         this.operatorAt = operatorAt;
     }
 
-    public BlackList() {
+    public UserRoleRef() {
     }
-
 
     public Long getUserId() {
         return userId;
-    }
-
-    public Boolean getHit() {
-        return hit;
-    }
-
-    public void setHit(Boolean hit) {
-        this.hit = hit;
     }
 
     public void setUserId(Long userId) {
         this.userId = userId;
     }
 
-    public WindowData[] getWindows() {
-        return windows;
+    public List<Long> getRefRoleIds() {
+        return refRoleIds;
     }
 
-    public void setWindows(WindowData[] windows) {
-        this.windows = windows;
+    public void setRefRoleIds(List<Long> refRoleIds) {
+        this.refRoleIds = refRoleIds;
     }
 
     public Boolean getDeleteFlag() {
@@ -87,5 +73,31 @@ public class BlackList {
 
     public void setOperatorAt(Long operatorAt) {
         this.operatorAt = operatorAt;
+    }
+
+
+    @Override
+    public boolean equals(final Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if ((obj == null) || (getClass() != obj.getClass())) {
+            return false;
+        }
+
+        UserRoleRef other = (UserRoleRef) obj;
+
+        return this.userId.equals(other.getUserId());
+    }
+
+    @Override
+    public int hashCode() {
+        return this.userId.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "@" + Integer.toHexString(hashCode()) + "useId:" +this.userId;
     }
 }

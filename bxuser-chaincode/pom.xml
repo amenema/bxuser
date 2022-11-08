@@ -19,7 +19,8 @@
         <spring-boot.version>2.3.7.RELEASE</spring-boot.version>
         <fabric.chaincode.version>2.2.1</fabric.chaincode.version>
         <fastjson.version>1.2.67</fastjson.version>
-
+            <maven.compiler.source>1.8</maven.compiler.source>
+            <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
     <dependencies>
@@ -27,7 +28,16 @@
             <groupId>org.hyperledger.fabric-chaincode-java</groupId>
             <artifactId>fabric-chaincode-shim</artifactId>
             <version>${fabric.chaincode.version}</version>
-
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>${fastjson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lucene</groupId>
+            <artifactId>ikAnalyzer</artifactId>
+            <version>6.5.0</version>
         </dependency>
     </dependencies>
 

@@ -15,24 +15,48 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>2.3.7.RELEASE</spring-boot.version>
         <fastjson.version>1.2.67</fastjson.version>
+        <es-client.version>6.7.0</es-client.version>
         <fabric.chaincode.version>2.2.1</fabric.chaincode.version>
+        <lombok.version>1.16.16</lombok.version>
 
     </properties>
     <modules>
         <module>bxuser-chaincode</module>
         <module>bxuser-chaincode-blacklist</module>
+        <module>bxuser-chaincode-gateway</module>
     </modules>
     <dependencyManagement>
         <dependencies>
-
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter</artifactId>
+                <version>${spring-boot.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.hyperledger.fabric-chaincode-java</groupId>
                 <artifactId>fabric-chaincode-shim</artifactId>
                 <version>${fabric.chaincode.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hyperledger.fabric</groupId>
+                <artifactId>fabric-gateway-java</artifactId>
+                <version>${fabric.chaincode.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hyperledger.fabric-sdk-java</groupId>
+                <artifactId>fabric-sdk-java</artifactId>
+                <version>${fabric.chaincode.version}</version>
+
+            </dependency>
+            <dependency>
+                <groupId>org.elasticsearch.client</groupId>
+                <artifactId>elasticsearch-rest-high-level-client</artifactId>
+                <version>${es-client.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
@@ -215,7 +239,7 @@
             <distributionManagement>
                 <repository>
                     <id>rdc-releases</id>
-                    <url>https://repo.rdc.aliyun.com/repository/42210-release-mI5S4B/</url>
+                    <url>https://packages.aliyun.com/maven/repository/2148917-release-nGNfmF</url>
                 </repository>
                 <snapshotRepository>
                     <id>rdc-snapshots</id>
