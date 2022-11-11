@@ -30,21 +30,18 @@ public class LogStashService {
 
     private static final Logger LOGGER = Logger.getLogger("LogStashService");
 
-    public static OperatorStashLog build(final String serviceName, final String methodName,
-                                         final String body,
+    public static OperatorStashLog build(final String index, final List<String> keys,
+                                         final Boolean rs,
+                                         final String indexMd5,
                                          final Long operatorId, final Long operatorAt) {
-        List<String> keyMd5 = new ArrayList<>();
-        keyMd5.add(serviceName);
-        keyMd5.add(methodName);
-        keyMd5.add(operatorId.toString());
-        if (body == null && body.length() > 0) {
-            for (String s : parse(body)) {
-                keyMd5.add(s);
-            }
-        }
+
         OperatorStashLog osl = new OperatorStashLog();
-        osl.setLogDataMd5(encryption(body));
+        osl.setKeys(keys);
+        osl.setIndexName(index);
+        osl.setLogDataMd5(indexMd5);
+        osl.setRs(rs);
         osl.setOperatorAt(operatorAt);
+        osl.setOperatorId(operatorId);
         return osl;
     }
 

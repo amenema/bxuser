@@ -1,7 +1,7 @@
 package com.dbxiao.galaxy.bxuser.chaincode.gateway.client.model;
 
-import org.hyperledger.fabric.contract.annotation.DataType;
-import org.hyperledger.fabric.contract.annotation.Property;
+
+import lombok.Data;
 
 import java.util.List;
 
@@ -9,18 +9,13 @@ import java.util.List;
  * @author amen
  * @date 2022/7/29
  */
-@DataType
+@Data
 public class UserRoleRef {
 
-    @Property()
     private Long userId;
-    @Property()
     private List<Long> refRoleIds;
-    @Property()
     private Boolean deleteFlag;
-    @Property()
     private Long operatorId;
-    @Property()
     private Long operatorAt;
 
 

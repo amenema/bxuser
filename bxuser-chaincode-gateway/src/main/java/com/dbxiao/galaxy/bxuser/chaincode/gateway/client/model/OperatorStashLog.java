@@ -1,12 +1,14 @@
 package com.dbxiao.galaxy.bxuser.chaincode.gateway.client.model;
 
+import lombok.Data;
+
 import java.util.List;
 
 /**
  * @author amen
  * @date 2022/10/28
  */
-
+@Data
 public class OperatorStashLog {
 
     private List<String> keysMd5;

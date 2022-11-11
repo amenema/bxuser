@@ -1,12 +1,11 @@
 package com.dbxiao.galaxy.bxuser.chaincode.contract;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.dbxiao.galaxy.bxuser.chaincode.dto.Page;
 import com.dbxiao.galaxy.bxuser.chaincode.model.OperatorStashLog;
 import com.dbxiao.galaxy.bxuser.chaincode.query.LogQuery;
-import com.dbxiao.galaxy.bxuser.chaincode.service.LogStashService;
-import com.dbxiao.galaxy.bxuser.chaincode.utils.JSON;
 import org.hyperledger.fabric.Logger;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
@@ -41,16 +40,13 @@ public class LogStashContract implements ContractInterface {
 
     }
 
-
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public OperatorStashLog submitLog(final Context ctx, final String serviceName, final String methodName,
-                                      final String body,
-                                      final Long operatorId, final Long operatorAt) {
-        OperatorStashLog osl = LogStashService.build(serviceName, methodName, body, operatorId, operatorAt);
+    public Boolean submitLog(final Context ctx,final String oslStr) {
         ChaincodeStub stub = ctx.getStub();
+        OperatorStashLog osl = JSON.parseObject(oslStr, OperatorStashLog.class);
         String logDataKey = buildDataKey(osl.getLogDataMd5());
-        stub.putState(logDataKey, JSON.toJSONString(osl).getBytes(StandardCharsets.UTF_8));
-        return osl;
+        stub.putState(logDataKey, oslStr.getBytes(StandardCharsets.UTF_8));
+        return Boolean.TRUE;
     }
 
 
@@ -65,7 +61,7 @@ public class LogStashContract implements ContractInterface {
             JSONObject ele = new JSONObject();
             JSONObject eleK = new JSONObject();
             eleK.put("$elemMatch", mk);
-            ele.put("keysMd5", eleK);
+            ele.put("keys", eleK);
             arrays.add(ele);
         }
         and.put("$and", arrays);

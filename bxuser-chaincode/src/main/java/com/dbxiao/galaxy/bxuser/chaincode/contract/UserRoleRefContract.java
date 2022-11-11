@@ -1,6 +1,5 @@
 package com.dbxiao.galaxy.bxuser.chaincode.contract;
 
-import com.dbxiao.galaxy.bxuser.chaincode.model.ResponseData;
 import com.dbxiao.galaxy.bxuser.chaincode.model.UserRoleRef;
 import com.dbxiao.galaxy.bxuser.chaincode.utils.JSON;
 import com.google.common.collect.Lists;
@@ -11,7 +10,6 @@ import org.hyperledger.fabric.contract.annotation.Contract;
 import org.hyperledger.fabric.contract.annotation.Default;
 import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.Transaction;
-import org.hyperledger.fabric.shim.Chaincode;
 import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
@@ -36,7 +34,7 @@ public class UserRoleRefContract implements ContractInterface {
 
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public ResponseData<UserRoleRef> createURF(final Context ctx, final UserRoleRef urf) {
+    public Boolean createURF(final Context ctx, final UserRoleRef urf) {
         ChaincodeStub stub = ctx.getStub();
         String realKey = buildKey(urf.getUserId());
         String valueState = stub.getStringState(realKey);
@@ -47,15 +45,12 @@ public class UserRoleRefContract implements ContractInterface {
 
         valueState = JSON.toJSONString(urf);
         stub.putStringState(realKey, valueState);
-        String logData = submitLog(stub, "createUrf", valueState, urf.getOperatorId(), urf.getOperatorAt());
-        ResponseData<UserRoleRef> rd = new ResponseData<>();
-        rd.setData(urf);
-        rd.setLogDta(logData);
-        return rd;
+
+        return Boolean.TRUE;
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public ResponseData<UserRoleRef> updateURF(final Context ctx, final UserRoleRef urf) {
+    public Boolean updateURF(final Context ctx, final UserRoleRef urf) {
         ChaincodeStub stub = ctx.getStub();
 
         String realKey = buildKey(urf.getUserId());
@@ -76,23 +71,21 @@ public class UserRoleRefContract implements ContractInterface {
         }
 
         stub.putStringState(realKey, valueState);
-        String logData = submitLog(stub, "updateUrf", valueState, urf.getOperatorId(), urf.getOperatorAt());
-        ResponseData<UserRoleRef> rd = new ResponseData<>();
-        rd.setData(urf);
-        rd.setLogDta(logData);
-        return rd;
+
+        return Boolean.TRUE;
     }
 
-    @Transaction()
-    public ResponseData<Boolean> addRole(final Context ctx, final Long userId, final Long roleId,
+    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    public Boolean addRole(final Context ctx, final Long userId, final Long roleId,
                                          final Long operatorId, final Long time) {
         ChaincodeStub stub = ctx.getStub();
 
         String realKey = buildKey(userId);
         String valueState = stub.getStringState(realKey);
-
-        String logData = submitLog(stub, "addRole", String.format("%s,%s", userId.toString() + roleId.toString()), operatorId, time);
+        LOGGER.info("before log");
+        LOGGER.info("after log");
         if (valueState.isEmpty()) {
+            LOGGER.info("empty data");
             UserRoleRef userRoleRef = new UserRoleRef();
             userRoleRef.setUserId(userId);
             userRoleRef.setRefRoleIds(Lists.newArrayList(roleId));
@@ -100,19 +93,14 @@ public class UserRoleRefContract implements ContractInterface {
             userRoleRef.setOperatorId(operatorId);
             userRoleRef.setOperatorAt(time);
             stub.putStringState(realKey, JSON.toJSONString(userRoleRef));
-            ResponseData<Boolean> rd = new ResponseData<>();
-            rd.setData(Boolean.TRUE);
-            rd.setLogDta(logData);
-            return rd;
+
+            LOGGER.info("return empty data");
+            return Boolean.TRUE;
         }
         UserRoleRef urf = JSON.parseObject(valueState, UserRoleRef.class);
         if (urf.getDeleteFlag()) {
             String errorMessage = String.format("URF %s already deleted", realKey);
-            LOGGER.error(errorMessage);
-            ResponseData<Boolean> rd = new ResponseData<>();
-            rd.setData(Boolean.TRUE);
-            rd.setLogDta(logData);
-            return rd;
+            return Boolean.TRUE;
         }
         if (urf.getRefRoleIds() == null) {
             urf.setRefRoleIds(new ArrayList<Long>());
@@ -123,18 +111,16 @@ public class UserRoleRefContract implements ContractInterface {
         urf.setOperatorAt(time);
         urf.setOperatorId(operatorId);
         valueState = JSON.toJSONString(urf);
+        LOGGER.info("brefore existed data");
         stub.putStringState(realKey, valueState);
-        ResponseData<Boolean> rd = new ResponseData<>();
-        rd.setData(Boolean.TRUE);
-        rd.setLogDta(logData);
-        return rd;
+        LOGGER.info("after existed data");
+        return Boolean.TRUE;
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public ResponseData<Boolean> cancelRole(final Context ctx, final Long userId, final Long roleId,
+    public Boolean cancelRole(final Context ctx, final Long userId, final Long roleId,
                                             final Long operatorId, final Long time) {
         ChaincodeStub stub = ctx.getStub();
-        String logData = submitLog(stub, "cancelRole", String.format("%s,%s", userId.toString() + roleId.toString()), operatorId, time);
 
         String realKey = buildKey(userId);
         String valueState = stub.getStringState(realKey);
@@ -142,51 +128,40 @@ public class UserRoleRefContract implements ContractInterface {
         if (isEmpty(valueState)) {
             String errorMessage = String.format("URF %s does not exist", realKey);
             LOGGER.error(errorMessage);
-            ResponseData<Boolean> rd = new ResponseData<>();
-            rd.setData(Boolean.TRUE);
-            rd.setLogDta(logData);
-            return rd;
+
+            return Boolean.TRUE;
         }
         UserRoleRef urf = JSON.parseObject(valueState, UserRoleRef.class);
         if (urf.getDeleteFlag()) {
             String errorMessage = String.format("URF %s already deleted", realKey);
             LOGGER.error(errorMessage);
-            ResponseData<Boolean> rd = new ResponseData<>();
-            rd.setData(Boolean.TRUE);
-            rd.setLogDta(logData);
-            return rd;
+
+            return Boolean.TRUE;
         }
         if (urf.getRefRoleIds() == null) {
-            ResponseData<Boolean> rd = new ResponseData<>();
-            rd.setData(Boolean.TRUE);
-            rd.setLogDta(logData);
-            return rd;
+
+            return Boolean.TRUE;
         }
         urf.getRefRoleIds().remove(roleId);
         urf.setOperatorAt(time);
         urf.setOperatorId(operatorId);
         valueState = JSON.toJSONString(urf);
         stub.putStringState(realKey, valueState);
-        ResponseData<Boolean> rd = new ResponseData<>();
-        rd.setData(Boolean.TRUE);
-        rd.setLogDta(logData);
-        return rd;
+
+        return Boolean.TRUE;
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public ResponseData<Boolean> delURF(final Context ctx, final Long userId,
+    public Boolean delURF(final Context ctx, final Long userId,
                                         final Long operatorId, final Long time) {
         ChaincodeStub stub = ctx.getStub();
-        String logData = submitLog(stub, "cancelRole", userId.toString(), operatorId, time);
 
         String realKey = buildKey(userId);
         String valueState = stub.getStringState(realKey);
 
         if (isEmpty(valueState)) {
-            ResponseData<Boolean> rd = new ResponseData<>();
-            rd.setData(Boolean.TRUE);
-            rd.setLogDta(logData);
-            return rd;
+
+            return Boolean.TRUE;
         }
         UserRoleRef urf = JSON.parseObject(valueState, UserRoleRef.class);
         urf.setDeleteFlag(Boolean.TRUE);
@@ -194,43 +169,33 @@ public class UserRoleRefContract implements ContractInterface {
         urf.setOperatorId(operatorId);
         valueState = JSON.toJSONString(urf);
         stub.putStringState(realKey, valueState);
-        ResponseData<Boolean> rd = new ResponseData<>();
-        rd.setData(Boolean.TRUE);
-        rd.setLogDta(logData);
-        return rd;
+
+        return Boolean.TRUE;
     }
 
     @Transaction(intent = Transaction.TYPE.EVALUATE)
-    public ResponseData<UserRoleRef> queryURF(final Context ctx, final Long userId) {
+    public UserRoleRef queryURF(final Context ctx, final Long userId) {
         ChaincodeStub stub = ctx.getStub();
         String realKey = buildKey(userId);
         String valueState = stub.getStringState(realKey);
-
         if (isEmpty(valueState)) {
             String errorMessage = String.format("URF %s does not exist", realKey);
             LOGGER.error(errorMessage);
-            return ResponseData.success(new UserRoleRef());
+            return new UserRoleRef();
         }
         UserRoleRef urf = JSON.parseObject(valueState, UserRoleRef.class);
 
         if (urf.getDeleteFlag()) {
             String errorMessage = String.format("URF %s already deleted", realKey);
             LOGGER.error(errorMessage);
-            return ResponseData.success(new UserRoleRef());
+            return new UserRoleRef();
         }
-        return ResponseData.success(urf);
+        return urf;
     }
 
     private Boolean isEmpty(String data) {
         return data == null || data.length() <= 0;
     }
 
-    public String submitLog(ChaincodeStub stub, final String methodName,
-                            final String body,
-                            final Long operatorId, final Long operatorAt) {
-        Chaincode.Response logstash = stub.invokeChaincodeWithStringArgs("logstashcc",
-                "submitLog", "UserRoleContract",
-                methodName, body, operatorId.toString(), operatorAt.toString());
-        return logstash.getStringPayload();
-    }
+
 }

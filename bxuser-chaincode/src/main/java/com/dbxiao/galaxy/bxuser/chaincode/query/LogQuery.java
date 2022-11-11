@@ -12,6 +12,8 @@ public class LogQuery {
     private Integer pageSize;
     private List<String> matchKeys;
 
+    private Long operatorId;
+    private String indexName;
     public String getBookMark() {
         return bookMark;
     }
@@ -34,5 +36,21 @@ public class LogQuery {
 
     public void setMatchKeys(List<String> matchKeys) {
         this.matchKeys = matchKeys;
+    }
+
+    public Long getOperatorId() {
+        return operatorId;
+    }
+
+    public void setOperatorId(Long operatorId) {
+        this.operatorId = operatorId;
+    }
+
+    public String getIndexName() {
+        return indexName;
+    }
+
+    public void setIndexName(String indexName) {
+        this.indexName = indexName;
     }
 }

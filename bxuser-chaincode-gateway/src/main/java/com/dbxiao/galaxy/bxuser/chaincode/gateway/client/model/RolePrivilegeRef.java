@@ -1,7 +1,6 @@
 package com.dbxiao.galaxy.bxuser.chaincode.gateway.client.model;
 
-import org.hyperledger.fabric.contract.annotation.DataType;
-import org.hyperledger.fabric.contract.annotation.Property;
+import lombok.Data;
 
 import java.util.List;
 
@@ -9,19 +8,14 @@ import java.util.List;
  * @author amen
  * @date 2022/7/29
  */
-@DataType
+@Data
 public class RolePrivilegeRef {
 
-    @Property()
     private Long roleId;
-    @Property()
     private List<Long> privilegeIds;
 
-    @Property()
     private Boolean deleteFlag;
-    @Property()
     private Long operatorId;
-    @Property()
     private Long operatorAt;
 
 
@@ -75,6 +69,7 @@ public class RolePrivilegeRef {
     public void setOperatorAt(Long operatorAt) {
         this.operatorAt = operatorAt;
     }
+
     @Override
     public int hashCode() {
         return this.roleId.hashCode();
@@ -82,6 +77,6 @@ public class RolePrivilegeRef {
 
     @Override
     public String toString() {
-        return this.getClass().getSimpleName() + "@" + Integer.toHexString(hashCode()) + "roleId:" +this.roleId;
+        return this.getClass().getSimpleName() + "@" + Integer.toHexString(hashCode()) + "roleId:" + this.roleId;
     }
 }

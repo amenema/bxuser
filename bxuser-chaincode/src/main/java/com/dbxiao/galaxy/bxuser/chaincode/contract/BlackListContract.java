@@ -1,7 +1,6 @@
 package com.dbxiao.galaxy.bxuser.chaincode.contract;
 
 import com.dbxiao.galaxy.bxuser.chaincode.model.BlackList;
-import com.dbxiao.galaxy.bxuser.chaincode.model.ResponseData;
 import com.dbxiao.galaxy.bxuser.chaincode.model.SlideWindow;
 import com.dbxiao.galaxy.bxuser.chaincode.model.WindowData;
 import com.dbxiao.galaxy.bxuser.chaincode.utils.JSON;
@@ -12,7 +11,6 @@ import org.hyperledger.fabric.contract.annotation.Contract;
 import org.hyperledger.fabric.contract.annotation.Default;
 import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.Transaction;
-import org.hyperledger.fabric.shim.Chaincode;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 
 import java.util.HashMap;
@@ -51,11 +49,9 @@ public class BlackListContract implements ContractInterface {
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public ResponseData<Boolean> checkData(final Context ctx, final Long userId, Long time) {
+    public Boolean checkData(final Context ctx, final Long userId, Long time) {
         ChaincodeStub stub = ctx.getStub();
-        String logData = submitLog(stub, "checkData",
-                userId.toString(),
-                userId, time);
+
         String realKey = buildKey(userId);
         String valueState = stub.getStringState(realKey);
         if (valueState == null || valueState.length() <= 0) {
@@ -67,23 +63,20 @@ public class BlackListContract implements ContractInterface {
                 LOGGER.error(e.getMessage());
             }
             LOGGER.info(String.format("init data:%s,json:%s", realKey, json));
-            return ResponseData.success(Boolean.FALSE, logData);
+            return Boolean.FALSE;
         }
         BlackList blackList = JSON.parseObject(valueState, BlackList.class);
         boolean go = SlideWindow.isGo(blackList, LIMIT, WINDOWS_TIME_LENGTH, time);
         blackList.setHit(!go);
         valueState = JSON.toJSONString(blackList);
         stub.putStringState(realKey, valueState);
-        return ResponseData.success(blackList.getHit(), logData);
+        return Boolean.TRUE;
 
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public ResponseData<Boolean> checkDataWithLimit(final Context ctx, final Long userId, Long time, Integer limit) {
+    public Boolean checkDataWithLimit(final Context ctx, final Long userId, Long time, Integer limit) {
         ChaincodeStub stub = ctx.getStub();
-        String logData = submitLog(stub, "checkDataWithLimit",
-                String.format("%s,limit:%s",userId.toString(),limit),
-                userId, time);
         String realKey = buildKey(userId);
         String valueState = stub.getStringState(realKey);
         if (valueState == null || valueState.length() <= 0) {
@@ -95,7 +88,7 @@ public class BlackListContract implements ContractInterface {
                 LOGGER.error(e.getMessage());
             }
             LOGGER.info(String.format("init data:%s,json:%s", realKey, json));
-            return ResponseData.success(Boolean.FALSE, logData);
+            return Boolean.FALSE;
         }
         BlackList blackList = JSON.parseObject(valueState, BlackList.class);
         boolean go = SlideWindow.isGo(blackList, limit, WINDOWS_TIME_LENGTH, time);
@@ -103,19 +96,16 @@ public class BlackListContract implements ContractInterface {
         valueState = JSON.toJSONString(blackList);
         stub.putStringState(realKey, valueState);
         LOGGER.info(String.format("insert data:%s,json:%s", realKey, valueState));
-        return ResponseData.success(blackList.getHit(), logData);
+        return Boolean.TRUE;
     }
 
     @Transaction(intent = Transaction.TYPE.SUBMIT)
-    public ResponseData<Boolean> unlock(final Context ctx, final Long userId, Long operatorId, Long time) {
+    public Boolean unlock(final Context ctx, final Long userId, Long operatorId, Long time) {
         ChaincodeStub stub = ctx.getStub();
-        String logData = submitLog(stub, "unlock",
-                userId.toString(),
-                operatorId, time);
         String realKey = buildKey(userId);
         String valueState = stub.getStringState(realKey);
         if (valueState == null || valueState.length() <= 0) {
-            return ResponseData.success(Boolean.TRUE,logData);
+            return Boolean.TRUE;
         }
         BlackList blackList = JSON.parseObject(valueState, BlackList.class);
         if (blackList.getHit()) {
@@ -126,10 +116,10 @@ public class BlackListContract implements ContractInterface {
             valueState = JSON.toJSONString(blackList);
             stub.putStringState(realKey, valueState);
         }
-        return ResponseData.success(Boolean.TRUE,logData);
+        return Boolean.TRUE;
     }
 
-    public Boolean checkDataWithLimitTest( final Long userId, Long time, Integer limit) {
+    public Boolean checkDataWithLimitTest(final Long userId, Long time, Integer limit) {
         String realKey = buildKey(userId);
         String valueState = MAP.get(realKey);
         if (valueState == null || valueState.length() <= 0) {
@@ -153,7 +143,6 @@ public class BlackListContract implements ContractInterface {
     }
 
 
-
     private BlackList init(Long userId, Long time) {
         BlackList bl = new BlackList();
         bl.setHit(false);
@@ -169,11 +158,5 @@ public class BlackListContract implements ContractInterface {
     }
 
 
-    public String submitLog(ChaincodeStub stub, final String methodName,
-                            final String body,
-                            final Long operatorId, final Long operatorAt) {
-        Chaincode.Response logstash = stub.invokeChaincodeWithStringArgs("logstashcc", "submitLog", "BlackListContract",
-                methodName, body, operatorId.toString(), operatorAt.toString());
-        return logstash.getStringPayload();
-    }
+
 }

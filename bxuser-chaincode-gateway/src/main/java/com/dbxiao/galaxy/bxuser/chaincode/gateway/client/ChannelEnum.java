@@ -6,18 +6,24 @@ package com.dbxiao.galaxy.bxuser.chaincode.gateway.client;
  */
 public enum ChannelEnum {
 
-    URF_CC("userrolecc"),
-    RRF_CC("roleprivilegecc"),
-    BL_CC("blacklistcc"),
-    LOG_CC("logstashcc")
+    URF_CC("userRoleCC","userrolecc"),
+    RRF_CC("roleRefCC","roleprivilegecc"),
+    BL_CC("blacklistCC","blacklistcc"),
+    LOG_CC("logstashCC","logstashcc")
     ;
-    private String name;
+    private String contract;
+    private String chaincode;
 
-    ChannelEnum(String name) {
-        this.name = name;
+    ChannelEnum(String contract, String chaincode) {
+        this.contract = contract;
+        this.chaincode = chaincode;
     }
 
-    public String getName() {
-        return name;
+    public String getContract() {
+        return contract;
+    }
+
+    public String getChaincode() {
+        return chaincode;
     }
 }
