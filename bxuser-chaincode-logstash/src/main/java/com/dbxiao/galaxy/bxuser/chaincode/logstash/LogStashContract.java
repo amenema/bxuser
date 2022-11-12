@@ -2,6 +2,7 @@ package com.dbxiao.galaxy.bxuser.chaincode.logstash;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Lists;
 import org.hyperledger.fabric.Logger;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
@@ -18,6 +19,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import static org.hyperledger.fabric.contract.annotation.Transaction.TYPE.SUBMIT;
+
 /**
  * @author amen
  * @date 2022/7/22
@@ -32,7 +35,7 @@ public class LogStashContract implements ContractInterface {
     private static final String INDEX_KEY = "log_split_index";
     private static final String LOG_KEY_FORMAT = "log_data_%s";
 
-    public void index(){
+    public void index() {
     }
 
     private static final String buildDataKey(String key) {
@@ -40,7 +43,7 @@ public class LogStashContract implements ContractInterface {
 
     }
 
-    @Transaction(intent = Transaction.TYPE.SUBMIT)
+    @Transaction(intent = SUBMIT)
     public Boolean submitLog(final Context ctx, final String oslStr) {
         ChaincodeStub stub = ctx.getStub();
         OperatorStashLog osl = JSON.parseObject(oslStr, OperatorStashLog.class);
@@ -50,19 +53,30 @@ public class LogStashContract implements ContractInterface {
     }
 
 
-    @Transaction()
-    public Page queryLogs(final Context ctx, final String query) {
+    @Transaction(intent = Transaction.TYPE.EVALUATE)
+    public void queryLogs2(final Context ctx, final String query) {
         LogQuery logQuery = JSON.parseObject(query, LogQuery.class);
         String selector = buildQuery(logQuery);
         ChaincodeStub stub = ctx.getStub();
-        QueryResultsIteratorWithMetadata<KeyValue> rs = null;
-        try {
-            rs = stub.getQueryResultWithPagination(selector, logQuery.getPageSize(), logQuery.getBookMark());
-        } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+        QueryResultsIteratorWithMetadata<KeyValue> rs = stub.getQueryResultWithPagination(selector, logQuery.getPageSize(), logQuery.getBookMark());
+        org.hyperledger.fabric.protos.peer.ChaincodeShim.QueryResponseMetadata metadata = rs.getMetadata();
+        Page page = new Page();
+        page.setPageSize(logQuery.getPageSize());
+        List<String> hashRs = new ArrayList<>();
+        if (isNotEmpty(metadata)) {
+            page.setBookMark(metadata.getBookmark());
         }
+    }
+
+    @Transaction(intent = Transaction.TYPE.EVALUATE)
+    public String queryLogs(final Context ctx, final String query) {
+        LogQuery logQuery = JSON.parseObject(query, LogQuery.class);
+        String selector = buildQuery(logQuery);
+        ChaincodeStub stub = ctx.getStub();
+        QueryResultsIteratorWithMetadata<KeyValue> rs = stub.getQueryResultWithPagination(selector, logQuery.getPageSize(), logQuery.getBookMark());
+
         if (rs == null) {
-            return new Page();
+            return "null";
         }
         org.hyperledger.fabric.protos.peer.ChaincodeShim.QueryResponseMetadata metadata = rs.getMetadata();
         Page page = new Page();
@@ -83,7 +97,7 @@ public class LogStashContract implements ContractInterface {
         }
         LOGGER.info("xxxx" + page.getBookMark());
         page.setDataMd5(hashRs);
-        return page;
+        return page.getBookMark();
     }
 
 
@@ -114,6 +128,8 @@ public class LogStashContract implements ContractInterface {
         }
         JSONObject qObj = new JSONObject();
         qObj.put("selector", selector);
+        qObj.put("use_index", Lists.newArrayList("logstash-index"));
+
         return qObj.toJSONString();
     }
 
