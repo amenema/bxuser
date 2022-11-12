@@ -32,6 +32,9 @@ public class LogStashContract implements ContractInterface {
     private static final String INDEX_KEY = "log_split_index";
     private static final String LOG_KEY_FORMAT = "log_data_%s";
 
+    public void index(){
+    }
+
     private static final String buildDataKey(String key) {
         return String.format(LOG_KEY_FORMAT, key);
 
